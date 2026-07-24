@@ -3,18 +3,17 @@ import Search from "./components/Search.jsx";
 import Spinner from "./components/Spinner.jsx";
 import MovieCard from "./components/MovieCard.jsx";
 import { useDebounce } from "react-use";
-import { getTrendingMovies, updateSearchCount } from "./appwrite.js";
+import { updateSearchCount } from "./appwrite.js";
 import fallbackMovies from "./fallbackMovies.js";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
-
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 const API_OPTIONS = {
   method: "GET",
   headers: {
     accept: "application/json",
-    Authorization: `Bearer ${API_KEY}`,
+    ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
   },
 };
 
@@ -27,6 +26,9 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [trendingMovies, setTrendingMovies] = useState([]);
+  const [topRatedMovies, setTopRatedMovies] = useState([]);
+  const [trendingTvShows, setTrendingTvShows] = useState([]);
+  const [topRatedTvShows, setTopRatedTvShows] = useState([]);
 
   // Debounce the search term to prevent making too many API requests
   // by waiting for the user to stop typing for 500ms
@@ -69,15 +71,19 @@ const App = () => {
     }
   };
 
-  const loadTrendingMovies = async () => {
+  const fetchMediaSection = async (endpoint, setter, fallbackData = []) => {
     try {
-      const movies = await getTrendingMovies();
-      setTrendingMovies(
-        Array.isArray(movies) && movies.length > 0 ? movies : [],
-      );
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, API_OPTIONS);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${endpoint}`);
+      }
+
+      const data = await response.json();
+      setter(data.results || fallbackData);
     } catch (error) {
-      console.error(`Error fetching trending movies: ${error}`);
-      setTrendingMovies([]);
+      console.error(`Error fetching media section ${endpoint}: ${error}`);
+      setter(fallbackData);
     }
   };
 
@@ -86,7 +92,10 @@ const App = () => {
   }, [debouncedSearchTerm]);
 
   useEffect(() => {
-    loadTrendingMovies();
+    fetchMediaSection("/trending/movie/day", setTrendingMovies, fallbackMovies);
+    fetchMediaSection("/movie/top_rated", setTopRatedMovies, fallbackMovies);
+    fetchMediaSection("/trending/tv/day", setTrendingTvShows, []);
+    fetchMediaSection("/tv/top_rated", setTopRatedTvShows, []);
   }, []);
 
   return (
@@ -104,23 +113,44 @@ const App = () => {
           <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
         </header>
 
-        {trendingMovies.length > 0 && (
-          <section className="trending">
-            <h2>Trending Movies</h2>
+        <section className="media-section">
+          <h2>Trending Movies</h2>
+          <ul>
+            {trendingMovies.map((movie) => (
+              <MovieCard key={movie.id} movie={movie} />
+            ))}
+          </ul>
+        </section>
 
-            <ul>
-              {trendingMovies.map((movie, index) => (
-                <li key={movie.$id}>
-                  <p>{index + 1}</p>
-                  <img src={movie.poster_url} alt={movie.title} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <section className="media-section">
+          <h2>Top IMDb Movies</h2>
+          <ul>
+            {topRatedMovies.map((movie) => (
+              <MovieCard key={movie.id} movie={movie} />
+            ))}
+          </ul>
+        </section>
+
+        <section className="media-section">
+          <h2>Trending TV Shows</h2>
+          <ul>
+            {trendingTvShows.map((show) => (
+              <MovieCard key={show.id} movie={show} />
+            ))}
+          </ul>
+        </section>
+
+        <section className="media-section">
+          <h2>Top IMDb TV Shows</h2>
+          <ul>
+            {topRatedTvShows.map((show) => (
+              <MovieCard key={show.id} movie={show} />
+            ))}
+          </ul>
+        </section>
 
         <section className="all-movies">
-          <h2>All Movies</h2>
+          <h2>Search Results</h2>
 
           {isLoading ? (
             <Spinner />
