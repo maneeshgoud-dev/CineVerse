@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import Search from "./components/Search.jsx";
 import Spinner from "./components/Spinner.jsx";
 import MovieCard from "./components/MovieCard.jsx";
+import MovieDetailModal from "./components/MovieDetailModal.jsx";
 import { useDebounce } from "react-use";
-import { updateSearchCount } from "./appwrite.js";
+import { updateSearchCount, getTrendingMovies } from "./appwrite.js";
 import fallbackMovies from "./fallbackMovies.js";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
@@ -30,9 +31,15 @@ const App = () => {
   const [trendingTvShows, setTrendingTvShows] = useState([]);
   const [topRatedTvShows, setTopRatedTvShows] = useState([]);
 
-  // Debounce the search term to prevent making too many API requests
-  // by waiting for the user to stop typing for 500ms
+  // Top searched movies from Appwrite (ranked by user search count)
+  const [topSearched, setTopSearched] = useState([]);
+
+  // Selected movie for detail modal
+  const [selectedMovie, setSelectedMovie] = useState(null);
+
   useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm]);
+
+  const isSearching = searchTerm.trim().length > 0;
 
   const fetchMovies = async (query = "") => {
     setIsLoading(true);
@@ -61,6 +68,8 @@ const App = () => {
 
       if (query && data.results.length > 0) {
         await updateSearchCount(query, data.results[0]);
+        // Refresh top searched after updating count
+        loadTopSearched();
       }
     } catch (error) {
       console.error(`Error fetching movies: ${error}`);
@@ -87,6 +96,30 @@ const App = () => {
     }
   };
 
+  const loadTopSearched = async () => {
+    try {
+      const docs = await getTrendingMovies();
+      if (docs && docs.length > 0) {
+        // Build movie-like objects from Appwrite docs
+        const ranked = docs.map((doc) => ({
+          id: doc.movie_id,
+          title: doc.searchTerm,
+          // poster_path will be null, but poster_url is stored in appwrite
+          poster_path: null,
+          poster_url: doc.poster_url,
+          vote_average: null,
+          release_date: null,
+          original_language: null,
+          _count: doc.count,
+          _docMovieId: doc.movie_id,
+        }));
+        setTopSearched(ranked);
+      }
+    } catch (e) {
+      console.error("Failed to load top searched:", e);
+    }
+  };
+
   useEffect(() => {
     fetchMovies(debouncedSearchTerm);
   }, [debouncedSearchTerm]);
@@ -96,7 +129,35 @@ const App = () => {
     fetchMediaSection("/movie/top_rated", setTopRatedMovies, fallbackMovies);
     fetchMediaSection("/trending/tv/day", setTrendingTvShows, []);
     fetchMediaSection("/tv/top_rated", setTopRatedTvShows, []);
+    loadTopSearched();
   }, []);
+
+  const handleMovieClick = (movie) => {
+    setSelectedMovie(movie);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMovie(null);
+  };
+
+  // For top-searched cards, fetch real movie by ID when clicked
+  const handleTopSearchedClick = async (doc) => {
+    if (!doc._docMovieId) return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/movie/${doc._docMovieId}`,
+        API_OPTIONS
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedMovie(data);
+      } else {
+        setSelectedMovie(doc);
+      }
+    } catch {
+      setSelectedMovie(doc);
+    }
+  };
 
   return (
     <main>
@@ -113,58 +174,172 @@ const App = () => {
           <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
         </header>
 
-        <section className="media-section">
-          <h2>Trending Movies</h2>
-          <ul>
-            {trendingMovies.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
-            ))}
-          </ul>
-        </section>
+        {/* ─── SEARCH MODE ─────────────────────────────────────────────── */}
+        {isSearching ? (
+          <section className="search-results-section">
+            <div className="search-results-header">
+              <h2>
+                Results for{" "}
+                <span className="text-gradient">"{searchTerm}"</span>
+              </h2>
+              <button
+                className="clear-search-btn"
+                onClick={() => setSearchTerm("")}
+              >
+                ✕ Clear
+              </button>
+            </div>
 
-        <section className="media-section">
-          <h2>Top IMDb Movies</h2>
-          <ul>
-            {topRatedMovies.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
-            ))}
-          </ul>
-        </section>
+            {isLoading ? (
+              <div className="search-loading">
+                <Spinner />
+                <p>Searching…</p>
+              </div>
+            ) : errorMessage ? (
+              <p className="text-red-500">{errorMessage}</p>
+            ) : movieList.length === 0 ? (
+              <div className="no-results">
+                <p>No movies found for "{searchTerm}"</p>
+              </div>
+            ) : (
+              <ul className="search-results-grid">
+                {movieList.map((movie) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onClick={handleMovieClick}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : (
+          /* ─── HOME MODE ───────────────────────────────────────────────── */
+          <>
+            {/* Top Searched Ranking */}
+            {topSearched.length > 0 && (
+              <section className="top-searched-section">
+                <div className="top-searched-header">
+                  <h2>🏆 Most Searched</h2>
+                  <p className="top-searched-subtitle">
+                    Ranked by CineVerse users
+                  </p>
+                </div>
+                <div className="top-searched-list">
+                  {topSearched.slice(0, 5).map((doc, index) => (
+                    <div
+                      key={doc.id || index}
+                      className={`top-searched-item rank-item-${index + 1}`}
+                      onClick={() => handleTopSearchedClick(doc)}
+                    >
+                      <div
+                        className={`top-rank-number rank-num-${Math.min(index + 1, 3)}`}
+                      >
+                        #{index + 1}
+                      </div>
+                      <div className="top-searched-poster">
+                        <img
+                          src={doc.poster_url || "/no-movie.png"}
+                          alt={doc.title}
+                        />
+                      </div>
+                      <div className="top-searched-info">
+                        <p className="top-searched-title">{doc.title}</p>
+                        <p className="top-searched-count">
+                          {doc._count}{" "}
+                          {doc._count === 1 ? "search" : "searches"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
-        <section className="media-section">
-          <h2>Trending TV Shows</h2>
-          <ul>
-            {trendingTvShows.map((show) => (
-              <MovieCard key={show.id} movie={show} />
-            ))}
-          </ul>
-        </section>
+            <section className="media-section">
+              <h2>Trending Movies</h2>
+              <ul>
+                {trendingMovies.map((movie, index) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
+                  />
+                ))}
+              </ul>
+            </section>
 
-        <section className="media-section">
-          <h2>Top IMDb TV Shows</h2>
-          <ul>
-            {topRatedTvShows.map((show) => (
-              <MovieCard key={show.id} movie={show} />
-            ))}
-          </ul>
-        </section>
+            <section className="media-section">
+              <h2>Top IMDb Movies</h2>
+              <ul>
+                {topRatedMovies.map((movie, index) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
+                  />
+                ))}
+              </ul>
+            </section>
 
-        <section className="all-movies">
-          <h2>Search Results</h2>
+            <section className="media-section">
+              <h2>Trending TV Shows</h2>
+              <ul>
+                {trendingTvShows.map((show, index) => (
+                  <MovieCard
+                    key={show.id}
+                    movie={show}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
+                  />
+                ))}
+              </ul>
+            </section>
 
-          {isLoading ? (
-            <Spinner />
-          ) : errorMessage ? (
-            <p className="text-red-500">{errorMessage}</p>
-          ) : (
-            <ul>
-              {movieList.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
-            </ul>
-          )}
-        </section>
+            <section className="media-section">
+              <h2>Top IMDb TV Shows</h2>
+              <ul>
+                {topRatedTvShows.map((show, index) => (
+                  <MovieCard
+                    key={show.id}
+                    movie={show}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
+                  />
+                ))}
+              </ul>
+            </section>
+
+            <section className="all-movies">
+              <h2>Popular Movies</h2>
+
+              {isLoading ? (
+                <Spinner />
+              ) : errorMessage ? (
+                <p className="text-red-500">{errorMessage}</p>
+              ) : (
+                <ul>
+                  {movieList.map((movie, index) => (
+                    <MovieCard
+                      key={movie.id}
+                      movie={movie}
+                      onClick={handleMovieClick}
+                      rank={index < 3 ? index + 1 : undefined}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
       </div>
+
+      {/* Movie Detail Modal */}
+      {selectedMovie && (
+        <MovieDetailModal movie={selectedMovie} onClose={handleCloseModal} />
+      )}
     </main>
   );
 };
