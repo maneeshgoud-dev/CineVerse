@@ -33,6 +33,8 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
   const [videos, setVideos] = useState([]);
   const [selectedTrailer, setSelectedTrailer] = useState(null);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistFeedback, setWatchlistFeedback] = useState(""); // "added" | "removed" | ""
 
   const isTV = !movie.title && !!movie.name;
   const mediaType = isTV ? "tv" : "movie";
@@ -117,19 +119,28 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
   };
 
   const handleAddToWatchlist = async () => {
-    if (!user) return;
+    if (!user || watchlistLoading) return;
+    setWatchlistLoading(true);
     try {
       const { addToWatchlist, removeFromWatchlist } =
         await import("../appwrite");
       if (inWatchlist) {
         await removeFromWatchlist(user.$id, movie.id);
         setInWatchlist(false);
+        setWatchlistFeedback("removed");
       } else {
         await addToWatchlist(user.$id, movie);
         setInWatchlist(true);
+        setWatchlistFeedback("added");
       }
+      // Clear feedback after 2 seconds
+      setTimeout(() => setWatchlistFeedback(""), 2000);
     } catch (err) {
       console.error("Error updating watchlist:", err);
+      setWatchlistFeedback("error");
+      setTimeout(() => setWatchlistFeedback(""), 2000);
+    } finally {
+      setWatchlistLoading(false);
     }
   };
 
@@ -306,12 +317,25 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                 {user && (
                   <div className="modal-actions">
                     <button
-                      className={`action-btn watchlist-action ${inWatchlist ? "active" : ""}`}
+                      className={`action-btn watchlist-action ${
+                        inWatchlist ? "active" : ""
+                      } ${watchlistFeedback === "error" ? "error" : ""}`}
                       onClick={handleAddToWatchlist}
+                      disabled={watchlistLoading}
                     >
-                      {inWatchlist
-                        ? "★ Remove from Watchlist"
-                        : "☆ Add to Watchlist"}
+                      {watchlistLoading ? (
+                        <span className="btn-spinner" />
+                      ) : watchlistFeedback === "added" ? (
+                        "✅ Added to Watchlist!"
+                      ) : watchlistFeedback === "removed" ? (
+                        "🗑️ Removed from Watchlist"
+                      ) : watchlistFeedback === "error" ? (
+                        "⚠️ Error — try again"
+                      ) : inWatchlist ? (
+                        "★ In Watchlist · Click to Remove"
+                      ) : (
+                        "☆ Add to Watchlist"
+                      )}
                     </button>
                   </div>
                 )}

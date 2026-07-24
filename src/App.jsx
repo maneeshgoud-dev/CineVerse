@@ -10,6 +10,7 @@ import {
   updateSearchCount,
   getTrendingMovies,
   getCurrentUser,
+  getWatchlist,
 } from "./appwrite.js";
 import fallbackMovies from "./fallbackMovies.js";
 
@@ -82,16 +83,21 @@ const App = () => {
   });
 
   // Check if any filters are applied (beyond defaults)
-  const isFiltering = filters.yearFrom !== null || 
-                      filters.yearTo !== null || 
-                      filters.ratingFrom !== null || 
-                      filters.ratingTo !== null || 
-                      filters.language !== null || 
-                      filters.sortBy !== "popularity.desc";
+  const isFiltering =
+    filters.yearFrom !== null ||
+    filters.yearTo !== null ||
+    filters.ratingFrom !== null ||
+    filters.ratingTo !== null ||
+    filters.language !== null ||
+    filters.sortBy !== "popularity.desc";
 
   // User authentication
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // Watchlist panel
+  const [showWatchlist, setShowWatchlist] = useState(false);
+  const [watchlistItems, setWatchlistItems] = useState([]);
 
   useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm]);
 
@@ -242,6 +248,10 @@ const App = () => {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
+        if (currentUser) {
+          const wl = await getWatchlist(currentUser.$id);
+          setWatchlistItems(wl || []);
+        }
       } catch (err) {
         console.error("Error loading user:", err);
         setUser(null);
@@ -260,6 +270,36 @@ const App = () => {
 
   const handleMovieClick = (movie) => setSelectedMovie(movie);
   const handleCloseModal = () => setSelectedMovie(null);
+
+  const handleUserChange = async (newUser) => {
+    setUser(newUser);
+    if (newUser) {
+      const wl = await getWatchlist(newUser.$id);
+      setWatchlistItems(wl || []);
+    } else {
+      setWatchlistItems([]);
+      setShowWatchlist(false);
+    }
+  };
+
+  const handleWatchlistToggle = async () => {
+    if (user && !showWatchlist) {
+      const wl = await getWatchlist(user.$id);
+      setWatchlistItems(wl || []);
+    }
+    setShowWatchlist((v) => !v);
+  };
+
+  // Called by MovieCard after any watchlist add/remove so count stays in sync
+  const handleWatchlistRefresh = async () => {
+    if (!user) return;
+    try {
+      const wl = await getWatchlist(user.$id);
+      setWatchlistItems(wl || []);
+    } catch (e) {
+      console.error("Watchlist refresh error:", e);
+    }
+  };
 
   const handleTopSearchedClick = async (doc) => {
     if (!doc._docMovieId) return;
@@ -311,7 +351,14 @@ const App = () => {
           <div className="header-top">
             <img src="./hero.png" alt="Hero Banner" />
             <div className="header-auth">
-              {!authLoading && <Auth user={user} onUserChange={setUser} />}
+              {!authLoading && (
+                <Auth
+                  user={user}
+                  onUserChange={handleUserChange}
+                  onWatchlistClick={handleWatchlistToggle}
+                  watchlistCount={watchlistItems.length}
+                />
+              )}
             </div>
           </div>
           <h1>
@@ -362,6 +409,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -402,6 +450,7 @@ const App = () => {
                     movie={movie}
                     onClick={handleMovieClick}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -451,6 +500,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -509,6 +559,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -524,6 +575,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -539,6 +591,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -554,6 +607,7 @@ const App = () => {
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
                     user={user}
+                    onWatchlistChange={handleWatchlistRefresh}
                   />
                 ))}
               </ul>
@@ -575,6 +629,7 @@ const App = () => {
                       onClick={handleMovieClick}
                       rank={index < 3 ? index + 1 : undefined}
                       user={user}
+                      onWatchlistChange={handleWatchlistRefresh}
                     />
                   ))}
                 </ul>
@@ -583,6 +638,49 @@ const App = () => {
           </>
         )}
       </div>
+
+      {/* Watchlist Panel */}
+      {showWatchlist && user && (
+        <div className="watchlist-overlay" onClick={() => setShowWatchlist(false)}>
+          <div className="watchlist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="watchlist-panel-header">
+              <h2>🎬 My Watchlist</h2>
+              <button className="watchlist-panel-close" onClick={() => setShowWatchlist(false)}>✕</button>
+            </div>
+            {watchlistItems.length === 0 ? (
+              <div className="watchlist-empty">
+                <p>🍿</p>
+                <p>Your watchlist is empty.</p>
+                <p className="watchlist-empty-sub">Add movies by clicking ☆ on any movie card.</p>
+              </div>
+            ) : (
+              <ul className="watchlist-grid">
+                {watchlistItems.map((item) => (
+                  <li
+                    key={item.$id}
+                    className="watchlist-item"
+                    onClick={() => {
+                      setSelectedMovie({ id: item.movieId, title: item.title, poster_path: item.poster_path, vote_average: item.vote_average });
+                      setShowWatchlist(false);
+                    }}
+                  >
+                    <img
+                      src={item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : "/no-movie.png"}
+                      alt={item.title}
+                    />
+                    <div className="watchlist-item-info">
+                      <p className="watchlist-item-title">{item.title}</p>
+                      {item.vote_average && (
+                        <p className="watchlist-item-rating">⭐ {Number(item.vote_average).toFixed(1)}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filters Modal */}
       <Filters

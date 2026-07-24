@@ -5,7 +5,7 @@ import {
   isInWatchlist,
 } from "../appwrite";
 
-const MovieCard = ({ movie, onClick, rank, user }) => {
+const MovieCard = ({ movie, onClick, rank, user, onWatchlistChange }) => {
   const {
     title,
     name,
@@ -19,6 +19,7 @@ const MovieCard = ({ movie, onClick, rank, user }) => {
 
   const [inWatchlist, setInWatchlist] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(""); // "added" | "removed" | ""
 
   const displayTitle = title || name || "Untitled";
   const releaseYear = release_date || first_air_date;
@@ -32,6 +33,8 @@ const MovieCard = ({ movie, onClick, rank, user }) => {
   useEffect(() => {
     if (user) {
       checkWatchlist();
+    } else {
+      setInWatchlist(false);
     }
   }, [user, movie.id]);
 
@@ -46,17 +49,22 @@ const MovieCard = ({ movie, onClick, rank, user }) => {
 
   const handleWatchlistClick = async (e) => {
     e.stopPropagation();
-    if (!user) return;
+    if (!user || loading) return;
 
     setLoading(true);
     try {
       if (inWatchlist) {
         await removeFromWatchlist(user.$id, movie.id);
         setInWatchlist(false);
+        setFeedback("removed");
       } else {
         await addToWatchlist(user.$id, movie);
         setInWatchlist(true);
+        setFeedback("added");
       }
+      // Notify parent (App) to refresh watchlist count
+      if (onWatchlistChange) onWatchlistChange();
+      setTimeout(() => setFeedback(""), 1500);
     } catch (err) {
       console.error("Error updating watchlist:", err);
     } finally {
@@ -77,12 +85,20 @@ const MovieCard = ({ movie, onClick, rank, user }) => {
 
         {user && (
           <button
-            className={`watchlist-btn ${inWatchlist ? "in-watchlist" : ""}`}
+            className={`watchlist-btn ${inWatchlist ? "in-watchlist" : ""} ${loading ? "loading" : ""} ${feedback === "added" ? "just-added" : ""}`}
             onClick={handleWatchlistClick}
             disabled={loading}
             title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
-            {inWatchlist ? "★" : "☆"}
+            {loading ? (
+              <span className="watchlist-btn-spinner" />
+            ) : feedback === "added" ? (
+              "✓"
+            ) : inWatchlist ? (
+              "★"
+            ) : (
+              "☆"
+            )}
           </button>
         )}
 

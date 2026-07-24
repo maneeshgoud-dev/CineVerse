@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { loginUser, registerUser, logoutUser } from "../appwrite";
 
-const Auth = ({ user, onUserChange }) => {
+const Auth = ({ user, onUserChange, onWatchlistClick, watchlistCount }) => {
   const [showModal, setShowModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -59,13 +59,21 @@ const Auth = ({ user, onUserChange }) => {
   if (user) {
     return (
       <div className="auth-user-info">
+        <span className="user-avatar">{(user.name || user.email || "U")[0].toUpperCase()}</span>
         <span className="user-name">{user.name || user.email}</span>
+        <button
+          className="auth-watchlist-btn"
+          onClick={onWatchlistClick}
+          title="My Watchlist"
+        >
+          🎬 Watchlist{watchlistCount > 0 ? ` (${watchlistCount})` : ""}
+        </button>
         <button
           className="auth-logout-btn"
           onClick={handleLogout}
           disabled={loading}
         >
-          {loading ? "Logging out..." : "Logout"}
+          {loading ? "..." : "Logout"}
         </button>
       </div>
     );
