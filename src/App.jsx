@@ -362,8 +362,7 @@ const App = () => {
             </div>
           </div>
           <h1>
-            Find <span className="text-gradient">Movies</span> You'll Enjoy
-            Without the Hassle
+            <span className="text-gradient">Bored?</span>Let’s Fix Your Watchlist
           </h1>
 
           <Search searchTerm={searchTerm} setSearchTerm={handleSearchChange} />
