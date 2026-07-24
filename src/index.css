@@ -21,10 +21,25 @@
 }
 
 @layer base {
+  html {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
   body {
     font-family: "DM Sans", serif;
     font-optical-sizing: auto;
     background: #030014;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  body::-webkit-scrollbar {
+    display: none;
   }
 
   h1 {
