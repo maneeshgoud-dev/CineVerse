@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "../appwrite";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+} from "../appwrite";
 
-const MovieCard = ({
-  movie,
-  onClick,
-  rank,
-  user,
-}) => {
+const MovieCard = ({ movie, onClick, rank, user }) => {
   const {
     title,
     name,
@@ -73,11 +72,9 @@ const MovieCard = ({
     >
       <div className="movie-card-poster-wrap">
         {rank && (
-          <div className={`rank-badge ${rankColors[rank] || ""}`}>
-            #{rank}
-          </div>
+          <div className={`rank-badge ${rankColors[rank] || ""}`}>#{rank}</div>
         )}
-        
+
         {user && (
           <button
             className={`watchlist-btn ${inWatchlist ? "in-watchlist" : ""}`}

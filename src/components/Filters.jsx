@@ -70,7 +70,9 @@ const Filters = ({ onFiltersChange, isVisible, onClose }) => {
       <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
         <div className="filters-header">
           <h3>Advanced Filters</h3>
-          <button className="filters-close" onClick={onClose}>✕</button>
+          <button className="filters-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         <div className="filters-content">
@@ -139,7 +141,10 @@ const Filters = ({ onFiltersChange, isVisible, onClose }) => {
           {/* Language */}
           <div className="filter-group">
             <label>Language</label>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
               <option value="">All Languages</option>
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>

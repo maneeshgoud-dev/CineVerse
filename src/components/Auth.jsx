@@ -31,7 +31,7 @@ const Auth = ({ user, onUserChange }) => {
         result = await registerUser(
           formData.email,
           formData.password,
-          formData.name || "User"
+          formData.name || "User",
         );
       }
       onUserChange(result);
@@ -60,7 +60,11 @@ const Auth = ({ user, onUserChange }) => {
     return (
       <div className="auth-user-info">
         <span className="user-name">{user.name || user.email}</span>
-        <button className="auth-logout-btn" onClick={handleLogout} disabled={loading}>
+        <button
+          className="auth-logout-btn"
+          onClick={handleLogout}
+          disabled={loading}
+        >
           {loading ? "Logging out..." : "Logout"}
         </button>
       </div>
@@ -76,10 +80,7 @@ const Auth = ({ user, onUserChange }) => {
       {showModal && (
         <div className="auth-overlay" onClick={() => setShowModal(false)}>
           <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="auth-close"
-              onClick={() => setShowModal(false)}
-            >
+            <button className="auth-close" onClick={() => setShowModal(false)}>
               ✕
             </button>
 
@@ -125,20 +126,26 @@ const Auth = ({ user, onUserChange }) => {
 
               {error && <p className="auth-error">{error}</p>}
 
-              <button type="submit" className="auth-submit-btn" disabled={loading}>
+              <button
+                type="submit"
+                className="auth-submit-btn"
+                disabled={loading}
+              >
                 {loading
                   ? isLogin
                     ? "Signing in..."
                     : "Creating account..."
                   : isLogin
-                  ? "Sign In"
-                  : "Sign Up"}
+                    ? "Sign In"
+                    : "Sign Up"}
               </button>
             </form>
 
             <div className="auth-toggle">
               <p>
-                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                {isLogin
+                  ? "Don't have an account?"
+                  : "Already have an account?"}
               </p>
               <button
                 type="button"

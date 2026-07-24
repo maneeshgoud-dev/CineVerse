@@ -6,7 +6,11 @@ import MovieDetailModal from "./components/MovieDetailModal.jsx";
 import Filters from "./components/Filters.jsx";
 import Auth from "./components/Auth.jsx";
 import { useDebounce } from "react-use";
-import { updateSearchCount, getTrendingMovies, getCurrentUser } from "./appwrite.js";
+import {
+  updateSearchCount,
+  getTrendingMovies,
+  getCurrentUser,
+} from "./appwrite.js";
 import fallbackMovies from "./fallbackMovies.js";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
@@ -22,24 +26,24 @@ const API_OPTIONS = {
 
 // TMDB genre list with emoji icons
 const GENRES = [
-  { id: 28,    name: "Action",         emoji: "💥" },
-  { id: 35,    name: "Comedy",         emoji: "😂" },
-  { id: 27,    name: "Horror",         emoji: "👻" },
-  { id: 10749, name: "Romance",        emoji: "❤️" },
-  { id: 878,   name: "Sci-Fi",         emoji: "🚀" },
-  { id: 16,    name: "Animation",      emoji: "🎨" },
-  { id: 53,    name: "Thriller",       emoji: "🔪" },
-  { id: 18,    name: "Drama",          emoji: "🎭" },
-  { id: 14,    name: "Fantasy",        emoji: "🧙" },
-  { id: 80,    name: "Crime",          emoji: "🕵️" },
-  { id: 12,    name: "Adventure",      emoji: "🗺️" },
-  { id: 10751, name: "Family",         emoji: "👨‍👩‍👧" },
-  { id: 36,    name: "History",        emoji: "🏛️" },
-  { id: 10752, name: "War",            emoji: "⚔️" },
-  { id: 9648,  name: "Mystery",        emoji: "🔍" },
-  { id: 10402, name: "Music",          emoji: "🎵" },
-  { id: 37,    name: "Western",        emoji: "🤠" },
-  { id: 99,    name: "Documentary",    emoji: "🎥" },
+  { id: 28, name: "Action", emoji: "💥" },
+  { id: 35, name: "Comedy", emoji: "😂" },
+  { id: 27, name: "Horror", emoji: "👻" },
+  { id: 10749, name: "Romance", emoji: "❤️" },
+  { id: 878, name: "Sci-Fi", emoji: "🚀" },
+  { id: 16, name: "Animation", emoji: "🎨" },
+  { id: 53, name: "Thriller", emoji: "🔪" },
+  { id: 18, name: "Drama", emoji: "🎭" },
+  { id: 14, name: "Fantasy", emoji: "🧙" },
+  { id: 80, name: "Crime", emoji: "🕵️" },
+  { id: 12, name: "Adventure", emoji: "🗺️" },
+  { id: 10751, name: "Family", emoji: "👨‍👩‍👧" },
+  { id: 36, name: "History", emoji: "🏛️" },
+  { id: 10752, name: "War", emoji: "⚔️" },
+  { id: 9648, name: "Mystery", emoji: "🔍" },
+  { id: 10402, name: "Music", emoji: "🎵" },
+  { id: 37, name: "Western", emoji: "🤠" },
+  { id: 99, name: "Documentary", emoji: "🎥" },
 ];
 
 const App = () => {
@@ -102,11 +106,19 @@ const App = () => {
           page: 1,
         });
 
-        if (filters.yearFrom) params.append("primary_release_date.gte", `${filters.yearFrom}-01-01`);
-        if (filters.yearTo) params.append("primary_release_date.lte", `${filters.yearTo}-12-31`);
-        if (filters.ratingFrom) params.append("vote_average.gte", filters.ratingFrom);
-        if (filters.ratingTo) params.append("vote_average.lte", filters.ratingTo);
-        if (filters.language) params.append("with_original_language", filters.language);
+        if (filters.yearFrom)
+          params.append(
+            "primary_release_date.gte",
+            `${filters.yearFrom}-01-01`,
+          );
+        if (filters.yearTo)
+          params.append("primary_release_date.lte", `${filters.yearTo}-12-31`);
+        if (filters.ratingFrom)
+          params.append("vote_average.gte", filters.ratingFrom);
+        if (filters.ratingTo)
+          params.append("vote_average.lte", filters.ratingTo);
+        if (filters.language)
+          params.append("with_original_language", filters.language);
 
         endpoint = `${API_BASE_URL}/discover/movie?${params.toString()}`;
       }
@@ -144,7 +156,7 @@ const App = () => {
     try {
       const res = await fetch(
         `${API_BASE_URL}/discover/movie?with_genres=${genre.id}&sort_by=popularity.desc&page=1`,
-        API_OPTIONS
+        API_OPTIONS,
       );
       if (!res.ok) throw new Error("Failed to fetch genre movies");
       const data = await res.json();
@@ -244,7 +256,10 @@ const App = () => {
   const handleTopSearchedClick = async (doc) => {
     if (!doc._docMovieId) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/movie/${doc._docMovieId}`, API_OPTIONS);
+      const res = await fetch(
+        `${API_BASE_URL}/movie/${doc._docMovieId}`,
+        API_OPTIONS,
+      );
       if (res.ok) {
         setSelectedMovie(await res.json());
       } else {
@@ -270,7 +285,10 @@ const App = () => {
           </button>
         ))}
       </div>
-      <button className="filters-toggle-btn" onClick={() => setShowFilters(true)}>
+      <button
+        className="filters-toggle-btn"
+        onClick={() => setShowFilters(true)}
+      >
         ⚙️ Filters
       </button>
     </div>
@@ -305,8 +323,7 @@ const App = () => {
             <div className="search-results-header">
               <h2>
                 <span className="genre-result-emoji">{activeGenre.emoji}</span>{" "}
-                <span className="text-gradient">{activeGenre.name}</span>{" "}
-                Movies
+                <span className="text-gradient">{activeGenre.name}</span> Movies
               </h2>
               <button
                 className="clear-search-btn"
@@ -401,11 +418,16 @@ const App = () => {
                       className={`top-searched-item rank-item-${index + 1}`}
                       onClick={() => handleTopSearchedClick(doc)}
                     >
-                      <div className={`top-rank-number rank-num-${Math.min(index + 1, 3)}`}>
+                      <div
+                        className={`top-rank-number rank-num-${Math.min(index + 1, 3)}`}
+                      >
                         #{index + 1}
                       </div>
                       <div className="top-searched-poster">
-                        <img src={doc.poster_url || "/no-movie.png"} alt={doc.title} />
+                        <img
+                          src={doc.poster_url || "/no-movie.png"}
+                          alt={doc.title}
+                        />
                       </div>
                       <div className="top-searched-info">
                         <p className="top-searched-title">{doc.title}</p>
@@ -514,7 +536,11 @@ const App = () => {
 
       {/* Movie Detail Modal */}
       {selectedMovie && (
-        <MovieDetailModal movie={selectedMovie} onClose={handleCloseModal} user={user} />
+        <MovieDetailModal
+          movie={selectedMovie}
+          onClose={handleCloseModal}
+          user={user}
+        />
       )}
     </main>
   );
