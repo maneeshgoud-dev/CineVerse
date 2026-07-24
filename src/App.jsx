@@ -3,8 +3,10 @@ import Search from "./components/Search.jsx";
 import Spinner from "./components/Spinner.jsx";
 import MovieCard from "./components/MovieCard.jsx";
 import MovieDetailModal from "./components/MovieDetailModal.jsx";
+import Filters from "./components/Filters.jsx";
+import Auth from "./components/Auth.jsx";
 import { useDebounce } from "react-use";
-import { updateSearchCount, getTrendingMovies } from "./appwrite.js";
+import { updateSearchCount, getTrendingMovies, getCurrentUser } from "./appwrite.js";
 import fallbackMovies from "./fallbackMovies.js";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
@@ -64,6 +66,21 @@ const App = () => {
   // Selected movie for detail modal
   const [selectedMovie, setSelectedMovie] = useState(null);
 
+  // Advanced Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    yearFrom: null,
+    yearTo: null,
+    ratingFrom: null,
+    ratingTo: null,
+    language: null,
+    sortBy: "popularity.desc",
+  });
+
+  // User authentication
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm]);
 
   const isSearching = searchTerm.trim().length > 0;
@@ -75,9 +92,24 @@ const App = () => {
     setErrorMessage("");
 
     try {
-      const endpoint = query
-        ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`
-        : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`;
+      let endpoint;
+      if (query) {
+        endpoint = `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`;
+      } else {
+        // Build discover endpoint with filters
+        const params = new URLSearchParams({
+          sort_by: filters.sortBy || "popularity.desc",
+          page: 1,
+        });
+
+        if (filters.yearFrom) params.append("primary_release_date.gte", `${filters.yearFrom}-01-01`);
+        if (filters.yearTo) params.append("primary_release_date.lte", `${filters.yearTo}-12-31`);
+        if (filters.ratingFrom) params.append("vote_average.gte", filters.ratingFrom);
+        if (filters.ratingTo) params.append("vote_average.lte", filters.ratingTo);
+        if (filters.language) params.append("with_original_language", filters.language);
+
+        endpoint = `${API_BASE_URL}/discover/movie?${params.toString()}`;
+      }
 
       const response = await fetch(endpoint, API_OPTIONS);
       if (!response.ok) throw new Error("Failed to fetch movies");
@@ -183,9 +215,22 @@ const App = () => {
 
   useEffect(() => {
     fetchMovies(debouncedSearchTerm);
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, filters]);
 
   useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (err) {
+        console.error("Error loading user:", err);
+        setUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    loadUser();
     fetchMediaSection("/trending/movie/day", setTrendingMovies, fallbackMovies);
     fetchMediaSection("/movie/top_rated", setTopRatedMovies, fallbackMovies);
     fetchMediaSection("/trending/tv/day", setTrendingTvShows, []);
@@ -225,6 +270,9 @@ const App = () => {
           </button>
         ))}
       </div>
+      <button className="filters-toggle-btn" onClick={() => setShowFilters(true)}>
+        ⚙️ Filters
+      </button>
     </div>
   );
 
@@ -234,7 +282,12 @@ const App = () => {
 
       <div className="wrapper">
         <header>
-          <img src="./hero.png" alt="Hero Banner" />
+          <div className="header-top">
+            <img src="./hero.png" alt="Hero Banner" />
+            <div className="header-auth">
+              {!authLoading && <Auth user={user} onUserChange={setUser} />}
+            </div>
+          </div>
           <h1>
             Find <span className="text-gradient">Movies</span> You'll Enjoy
             Without the Hassle
@@ -283,6 +336,7 @@ const App = () => {
                     movie={movie}
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -322,6 +376,7 @@ const App = () => {
                     key={movie.id}
                     movie={movie}
                     onClick={handleMovieClick}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -374,6 +429,7 @@ const App = () => {
                     movie={movie}
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -388,6 +444,7 @@ const App = () => {
                     movie={movie}
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -402,6 +459,7 @@ const App = () => {
                     movie={show}
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -416,6 +474,7 @@ const App = () => {
                     movie={show}
                     onClick={handleMovieClick}
                     rank={index < 3 ? index + 1 : undefined}
+                    user={user}
                   />
                 ))}
               </ul>
@@ -436,6 +495,7 @@ const App = () => {
                       movie={movie}
                       onClick={handleMovieClick}
                       rank={index < 3 ? index + 1 : undefined}
+                      user={user}
                     />
                   ))}
                 </ul>
@@ -445,9 +505,16 @@ const App = () => {
         )}
       </div>
 
+      {/* Filters Modal */}
+      <Filters
+        isVisible={showFilters}
+        onClose={() => setShowFilters(false)}
+        onFiltersChange={(newFilters) => setFilters(newFilters)}
+      />
+
       {/* Movie Detail Modal */}
       {selectedMovie && (
-        <MovieDetailModal movie={selectedMovie} onClose={handleCloseModal} />
+        <MovieDetailModal movie={selectedMovie} onClose={handleCloseModal} user={user} />
       )}
     </main>
   );
