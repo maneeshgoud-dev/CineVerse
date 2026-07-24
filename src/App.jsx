@@ -18,6 +18,28 @@ const API_OPTIONS = {
   },
 };
 
+// TMDB genre list with emoji icons
+const GENRES = [
+  { id: 28,    name: "Action",         emoji: "💥" },
+  { id: 35,    name: "Comedy",         emoji: "😂" },
+  { id: 27,    name: "Horror",         emoji: "👻" },
+  { id: 10749, name: "Romance",        emoji: "❤️" },
+  { id: 878,   name: "Sci-Fi",         emoji: "🚀" },
+  { id: 16,    name: "Animation",      emoji: "🎨" },
+  { id: 53,    name: "Thriller",       emoji: "🔪" },
+  { id: 18,    name: "Drama",          emoji: "🎭" },
+  { id: 14,    name: "Fantasy",        emoji: "🧙" },
+  { id: 80,    name: "Crime",          emoji: "🕵️" },
+  { id: 12,    name: "Adventure",      emoji: "🗺️" },
+  { id: 10751, name: "Family",         emoji: "👨‍👩‍👧" },
+  { id: 36,    name: "History",        emoji: "🏛️" },
+  { id: 10752, name: "War",            emoji: "⚔️" },
+  { id: 9648,  name: "Mystery",        emoji: "🔍" },
+  { id: 10402, name: "Music",          emoji: "🎵" },
+  { id: 37,    name: "Western",        emoji: "🤠" },
+  { id: 99,    name: "Documentary",    emoji: "🎥" },
+];
+
 const App = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,13 +56,20 @@ const App = () => {
   // Top searched movies from Appwrite (ranked by user search count)
   const [topSearched, setTopSearched] = useState([]);
 
+  // Active genre filter
+  const [activeGenre, setActiveGenre] = useState(null); // { id, name, emoji }
+  const [genreMovies, setGenreMovies] = useState([]);
+  const [genreLoading, setGenreLoading] = useState(false);
+
   // Selected movie for detail modal
   const [selectedMovie, setSelectedMovie] = useState(null);
 
   useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm]);
 
   const isSearching = searchTerm.trim().length > 0;
+  const isGenreMode = !isSearching && activeGenre !== null;
 
+  // ── Fetch movies by text search ────────────────────────────────────────
   const fetchMovies = async (query = "") => {
     setIsLoading(true);
     setErrorMessage("");
@@ -51,10 +80,7 @@ const App = () => {
         : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`;
 
       const response = await fetch(endpoint, API_OPTIONS);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch movies");
-      }
+      if (!response.ok) throw new Error("Failed to fetch movies");
 
       const data = await response.json();
 
@@ -68,7 +94,6 @@ const App = () => {
 
       if (query && data.results.length > 0) {
         await updateSearchCount(query, data.results[0]);
-        // Refresh top searched after updating count
         loadTopSearched();
       }
     } catch (error) {
@@ -80,14 +105,52 @@ const App = () => {
     }
   };
 
+  // ── Fetch movies by genre ──────────────────────────────────────────────
+  const fetchGenreMovies = async (genre) => {
+    setGenreLoading(true);
+    setGenreMovies([]);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/discover/movie?with_genres=${genre.id}&sort_by=popularity.desc&page=1`,
+        API_OPTIONS
+      );
+      if (!res.ok) throw new Error("Failed to fetch genre movies");
+      const data = await res.json();
+      setGenreMovies(data.results || []);
+    } catch (e) {
+      console.error(e);
+      setGenreMovies([]);
+    } finally {
+      setGenreLoading(false);
+    }
+  };
+
+  // ── Handle genre chip click ────────────────────────────────────────────
+  const handleGenreClick = (genre) => {
+    if (activeGenre?.id === genre.id) {
+      // Deselect — go back to home
+      setActiveGenre(null);
+      setGenreMovies([]);
+    } else {
+      setActiveGenre(genre);
+      setSearchTerm(""); // clear any active search
+      fetchGenreMovies(genre);
+    }
+  };
+
+  // ── Handle search input — clears genre ────────────────────────────────
+  const handleSearchChange = (term) => {
+    setSearchTerm(term);
+    if (term.trim().length > 0) {
+      setActiveGenre(null);
+      setGenreMovies([]);
+    }
+  };
+
   const fetchMediaSection = async (endpoint, setter, fallbackData = []) => {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, API_OPTIONS);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${endpoint}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`);
       const data = await response.json();
       setter(data.results || fallbackData);
     } catch (error) {
@@ -100,11 +163,9 @@ const App = () => {
     try {
       const docs = await getTrendingMovies();
       if (docs && docs.length > 0) {
-        // Build movie-like objects from Appwrite docs
         const ranked = docs.map((doc) => ({
           id: doc.movie_id,
           title: doc.searchTerm,
-          // poster_path will be null, but poster_url is stored in appwrite
           poster_path: null,
           poster_url: doc.poster_url,
           vote_average: null,
@@ -132,25 +193,15 @@ const App = () => {
     loadTopSearched();
   }, []);
 
-  const handleMovieClick = (movie) => {
-    setSelectedMovie(movie);
-  };
+  const handleMovieClick = (movie) => setSelectedMovie(movie);
+  const handleCloseModal = () => setSelectedMovie(null);
 
-  const handleCloseModal = () => {
-    setSelectedMovie(null);
-  };
-
-  // For top-searched cards, fetch real movie by ID when clicked
   const handleTopSearchedClick = async (doc) => {
     if (!doc._docMovieId) return;
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/movie/${doc._docMovieId}`,
-        API_OPTIONS
-      );
+      const res = await fetch(`${API_BASE_URL}/movie/${doc._docMovieId}`, API_OPTIONS);
       if (res.ok) {
-        const data = await res.json();
-        setSelectedMovie(data);
+        setSelectedMovie(await res.json());
       } else {
         setSelectedMovie(doc);
       }
@@ -158,6 +209,24 @@ const App = () => {
       setSelectedMovie(doc);
     }
   };
+
+  // ── Genre Chips bar ───────────────────────────────────────────────────
+  const GenreChips = () => (
+    <div className="genre-chips-bar">
+      <div className="genre-chips-scroll">
+        {GENRES.map((genre) => (
+          <button
+            key={genre.id}
+            className={`genre-chip ${activeGenre?.id === genre.id ? "genre-chip-active" : ""}`}
+            onClick={() => handleGenreClick(genre)}
+          >
+            <span className="genre-chip-emoji">{genre.emoji}</span>
+            <span>{genre.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <main>
@@ -171,11 +240,56 @@ const App = () => {
             Without the Hassle
           </h1>
 
-          <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <Search searchTerm={searchTerm} setSearchTerm={handleSearchChange} />
+
+          {/* ── Genre Category Chips ── */}
+          <GenreChips />
         </header>
 
-        {/* ─── SEARCH MODE ─────────────────────────────────────────────── */}
-        {isSearching ? (
+        {/* ─── GENRE MODE ──────────────────────────────────────────────── */}
+        {isGenreMode ? (
+          <section className="search-results-section">
+            <div className="search-results-header">
+              <h2>
+                <span className="genre-result-emoji">{activeGenre.emoji}</span>{" "}
+                <span className="text-gradient">{activeGenre.name}</span>{" "}
+                Movies
+              </h2>
+              <button
+                className="clear-search-btn"
+                onClick={() => {
+                  setActiveGenre(null);
+                  setGenreMovies([]);
+                }}
+              >
+                ✕ Clear
+              </button>
+            </div>
+
+            {genreLoading ? (
+              <div className="search-loading">
+                <Spinner />
+                <p>Loading {activeGenre.name} movies…</p>
+              </div>
+            ) : genreMovies.length === 0 ? (
+              <div className="no-results">
+                <p>No {activeGenre.name} movies found.</p>
+              </div>
+            ) : (
+              <ul className="search-results-grid">
+                {genreMovies.map((movie, index) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : isSearching ? (
+          /* ─── SEARCH MODE ────────────────────────────────────────────── */
           <section className="search-results-section">
             <div className="search-results-header">
               <h2>
@@ -214,7 +328,7 @@ const App = () => {
             )}
           </section>
         ) : (
-          /* ─── HOME MODE ───────────────────────────────────────────────── */
+          /* ─── HOME MODE ──────────────────────────────────────────────── */
           <>
             {/* Top Searched Ranking */}
             {topSearched.length > 0 && (
@@ -232,16 +346,11 @@ const App = () => {
                       className={`top-searched-item rank-item-${index + 1}`}
                       onClick={() => handleTopSearchedClick(doc)}
                     >
-                      <div
-                        className={`top-rank-number rank-num-${Math.min(index + 1, 3)}`}
-                      >
+                      <div className={`top-rank-number rank-num-${Math.min(index + 1, 3)}`}>
                         #{index + 1}
                       </div>
                       <div className="top-searched-poster">
-                        <img
-                          src={doc.poster_url || "/no-movie.png"}
-                          alt={doc.title}
-                        />
+                        <img src={doc.poster_url || "/no-movie.png"} alt={doc.title} />
                       </div>
                       <div className="top-searched-info">
                         <p className="top-searched-title">{doc.title}</p>

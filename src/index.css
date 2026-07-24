@@ -93,6 +93,75 @@
     }
   }
 
+  /* ── Genre Chips Bar ────────────────────────────────────── */
+  .genre-chips-bar {
+    width: 100%;
+    max-width: 48rem;
+    margin: 16px auto 0;
+    position: relative;
+  }
+
+  .genre-chips-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 4px 2px 10px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .genre-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(206, 206, 251, 0.15);
+    background: rgba(15, 13, 35, 0.6);
+    color: #a8b5db;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(6px);
+    flex-shrink: 0;
+
+    &:hover {
+      background: rgba(171, 139, 255, 0.12);
+      border-color: rgba(171, 139, 255, 0.4);
+      color: #d6c7ff;
+      transform: translateY(-2px);
+    }
+  }
+
+  .genre-chip-active {
+    background: linear-gradient(135deg, rgba(171, 139, 255, 0.3), rgba(214, 199, 255, 0.15));
+    border-color: #ab8bff;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(171, 139, 255, 0.35), 0 2px 8px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+
+    &:hover {
+      background: linear-gradient(135deg, rgba(171, 139, 255, 0.4), rgba(214, 199, 255, 0.2));
+      border-color: #d6c7ff;
+    }
+  }
+
+  .genre-chip-emoji {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .genre-result-emoji {
+    font-size: 28px;
+    vertical-align: middle;
+  }
+
+
   .all-movies {
     @apply space-y-9;
 
