@@ -81,6 +81,14 @@ const App = () => {
     sortBy: "popularity.desc",
   });
 
+  // Check if any filters are applied (beyond defaults)
+  const isFiltering = filters.yearFrom !== null || 
+                      filters.yearTo !== null || 
+                      filters.ratingFrom !== null || 
+                      filters.ratingTo !== null || 
+                      filters.language !== null || 
+                      filters.sortBy !== "popularity.desc";
+
   // User authentication
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -393,6 +401,55 @@ const App = () => {
                     key={movie.id}
                     movie={movie}
                     onClick={handleMovieClick}
+                    user={user}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : isFiltering ? (
+          /* ─── FILTER MODE ────────────────────────────────────────────── */
+          <section className="search-results-section">
+            <div className="search-results-header">
+              <h2>
+                <span className="text-gradient">Filtered Results</span>
+              </h2>
+              <button
+                className="clear-search-btn"
+                onClick={() => {
+                  setFilters({
+                    yearFrom: null,
+                    yearTo: null,
+                    ratingFrom: null,
+                    ratingTo: null,
+                    language: null,
+                    sortBy: "popularity.desc",
+                  });
+                }}
+              >
+                ✕ Clear Filters
+              </button>
+            </div>
+
+            {isLoading ? (
+              <div className="search-loading">
+                <Spinner />
+                <p>Loading filtered results…</p>
+              </div>
+            ) : errorMessage ? (
+              <p className="text-red-500">{errorMessage}</p>
+            ) : movieList.length === 0 ? (
+              <div className="no-results">
+                <p>No movies found matching your filters.</p>
+              </div>
+            ) : (
+              <ul className="search-results-grid">
+                {movieList.map((movie, index) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onClick={handleMovieClick}
+                    rank={index < 3 ? index + 1 : undefined}
                     user={user}
                   />
                 ))}

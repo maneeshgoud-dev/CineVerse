@@ -13,17 +13,17 @@ const API_OPTIONS = {
 
 // Well-known streaming service brand colors & logos (fallback icons)
 const PROVIDER_COLORS = {
-  "Netflix": "#E50914",
+  Netflix: "#E50914",
   "Amazon Prime Video": "#00A8E0",
   "Disney Plus": "#113CCF",
   "Apple TV Plus": "#555555",
-  "Hulu": "#1CE783",
+  Hulu: "#1CE783",
   "HBO Max": "#5822B4",
-  "Max": "#5822B4",
-  "Peacock": "#000000",
+  Max: "#5822B4",
+  Peacock: "#000000",
   "Paramount Plus": "#0064FF",
-  "Crunchyroll": "#F47521",
-  "default": "#AB8BFF",
+  Crunchyroll: "#F47521",
+  default: "#AB8BFF",
 };
 
 const MovieDetailModal = ({ movie, onClose, user }) => {
@@ -45,7 +45,10 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
         // Fetch details, watch providers, and videos in parallel
         const [detailsRes, providersRes, videosRes] = await Promise.all([
           fetch(`${API_BASE_URL}/${mediaType}/${movie.id}`, API_OPTIONS),
-          fetch(`${API_BASE_URL}/${mediaType}/${movie.id}/watch/providers`, API_OPTIONS),
+          fetch(
+            `${API_BASE_URL}/${mediaType}/${movie.id}/watch/providers`,
+            API_OPTIONS,
+          ),
           fetch(`${API_BASE_URL}/${mediaType}/${movie.id}/videos`, API_OPTIONS),
         ]);
 
@@ -57,7 +60,8 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
 
         // Try to get providers for India first, then US, then any available region
         const results = providersData.results || {};
-        const regionData = results["IN"] || results["US"] || Object.values(results)[0] || null;
+        const regionData =
+          results["IN"] || results["US"] || Object.values(results)[0] || null;
         setProviders(regionData);
 
         // Extract trailers (prefer official trailers first, then any trailers)
@@ -65,13 +69,13 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
         const trailers = allVideos.filter(
           (v) =>
             v.site === "YouTube" &&
-            (v.type === "Trailer" || v.type === "Teaser")
+            (v.type === "Trailer" || v.type === "Teaser"),
         );
-        
+
         const officialTrailer = trailers.find(
-          (v) => v.type === "Trailer" && v.official
+          (v) => v.type === "Trailer" && v.official,
         );
-        
+
         setVideos(trailers);
         if (officialTrailer) {
           setSelectedTrailer(officialTrailer);
@@ -115,7 +119,8 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
   const handleAddToWatchlist = async () => {
     if (!user) return;
     try {
-      const { addToWatchlist, removeFromWatchlist } = await import("../appwrite");
+      const { addToWatchlist, removeFromWatchlist } =
+        await import("../appwrite");
       if (inWatchlist) {
         await removeFromWatchlist(user.$id, movie.id);
         setInWatchlist(false);
@@ -140,12 +145,13 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
     : null;
 
   const genres = details?.genres?.map((g) => g.name) || [];
-  const overview = details?.overview || movie.overview || "No description available.";
+  const overview =
+    details?.overview || movie.overview || "No description available.";
   const runtime = details?.runtime
     ? `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m`
     : details?.episode_run_time?.[0]
-    ? `${details.episode_run_time[0]}m / ep`
-    : null;
+      ? `${details.episode_run_time[0]}m / ep`
+      : null;
 
   // Collect unique streaming providers (flatrate = subscription, rent, buy)
   const streamProviders = providers?.flatrate || [];
@@ -153,10 +159,14 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
   const buyProviders = providers?.buy || [];
   const watchLink = providers?.link || null;
 
-  const hasProviders = streamProviders.length > 0 || rentProviders.length > 0 || buyProviders.length > 0;
+  const hasProviders =
+    streamProviders.length > 0 ||
+    rentProviders.length > 0 ||
+    buyProviders.length > 0;
 
   const ProviderLogo = ({ provider }) => {
-    const color = PROVIDER_COLORS[provider.provider_name] || PROVIDER_COLORS.default;
+    const color =
+      PROVIDER_COLORS[provider.provider_name] || PROVIDER_COLORS.default;
     return (
       <div
         className="provider-logo-wrap"
@@ -181,10 +191,7 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-container"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Backdrop */}
         {backdropSrc && (
           <div className="modal-backdrop">
@@ -195,7 +202,14 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
 
         {/* Close Button */}
         <button className="modal-close-btn" onClick={onClose}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -218,7 +232,9 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
               <>
                 <div className="modal-badges">
                   {genres.slice(0, 3).map((g) => (
-                    <span key={g} className="modal-badge">{g}</span>
+                    <span key={g} className="modal-badge">
+                      {g}
+                    </span>
                   ))}
                   {mediaType === "tv" && (
                     <span className="modal-badge modal-badge-tv">TV Show</span>
@@ -230,7 +246,11 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                 <div className="modal-meta-row">
                   <div className="modal-rating">
                     <img src="/star.svg" alt="star" />
-                    <span>{movie.vote_average ? movie.vote_average.toFixed(1) : "N/A"}</span>
+                    <span>
+                      {movie.vote_average
+                        ? movie.vote_average.toFixed(1)
+                        : "N/A"}
+                    </span>
                   </div>
                   {releaseYear !== "N/A" && (
                     <>
@@ -245,7 +265,9 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                     </>
                   )}
                   <span className="modal-dot">•</span>
-                  <span className="modal-lang">{movie.original_language?.toUpperCase()}</span>
+                  <span className="modal-lang">
+                    {movie.original_language?.toUpperCase()}
+                  </span>
                 </div>
 
                 <p className="modal-overview">{overview}</p>
@@ -287,7 +309,9 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                       className={`action-btn watchlist-action ${inWatchlist ? "active" : ""}`}
                       onClick={handleAddToWatchlist}
                     >
-                      {inWatchlist ? "★ Remove from Watchlist" : "☆ Add to Watchlist"}
+                      {inWatchlist
+                        ? "★ Remove from Watchlist"
+                        : "☆ Add to Watchlist"}
                     </button>
                   </div>
                 )}
@@ -295,7 +319,13 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                 {/* ── Where to Watch ────────────────────────────────── */}
                 <div className="where-to-watch">
                   <div className="wtw-header">
-                    <svg className="wtw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="wtw-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <rect x="2" y="3" width="20" height="14" rx="2" />
                       <path d="M8 21h8M12 17v4" />
                     </svg>
@@ -313,7 +343,9 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                   </div>
 
                   {!hasProviders ? (
-                    <p className="wtw-none">Not available for streaming in your region.</p>
+                    <p className="wtw-none">
+                      Not available for streaming in your region.
+                    </p>
                   ) : (
                     <div className="wtw-sections">
                       {streamProviders.length > 0 && (
@@ -363,13 +395,17 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                   {details?.vote_count > 0 && (
                     <div className="modal-stat">
                       <span className="modal-stat-label">Vote Count</span>
-                      <span className="modal-stat-value">{details.vote_count?.toLocaleString()}</span>
+                      <span className="modal-stat-value">
+                        {details.vote_count?.toLocaleString()}
+                      </span>
                     </div>
                   )}
                   {details?.popularity > 0 && (
                     <div className="modal-stat">
                       <span className="modal-stat-label">Popularity</span>
-                      <span className="modal-stat-value">{details.popularity?.toFixed(0)}</span>
+                      <span className="modal-stat-value">
+                        {details.popularity?.toFixed(0)}
+                      </span>
                     </div>
                   )}
                   {details?.status && (
@@ -381,7 +417,9 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                   {details?.budget > 0 && (
                     <div className="modal-stat">
                       <span className="modal-stat-label">Budget</span>
-                      <span className="modal-stat-value">${(details.budget / 1e6).toFixed(0)}M</span>
+                      <span className="modal-stat-value">
+                        ${(details.budget / 1e6).toFixed(0)}M
+                      </span>
                     </div>
                   )}
                 </div>
@@ -390,7 +428,10 @@ const MovieDetailModal = ({ movie, onClose, user }) => {
                   <div className="modal-companies">
                     <span className="modal-stat-label">Production</span>
                     <span className="modal-companies-list">
-                      {details.production_companies.slice(0, 3).map((c) => c.name).join(", ")}
+                      {details.production_companies
+                        .slice(0, 3)
+                        .map((c) => c.name)
+                        .join(", ")}
                     </span>
                   </div>
                 )}
